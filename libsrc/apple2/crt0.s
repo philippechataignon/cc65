@@ -19,12 +19,6 @@
 
         .segment        "STARTUP"
 
-        ; ProDOS TechRefMan, chapter 5.2.1:
-        ; "For maximum interrupt efficiency, a system program should not
-        ;  use more than the upper 3/4 of the stack."
-        ldx     #$FF
-        txs                     ; Init stack pointer
-
         ; Save space by putting some of the start-up code in the ONCE segment,
         ; which can be re-used by the BSS segment, the heap and the C stack.
         jsr     init
@@ -39,9 +33,6 @@
 _exit:  ldx     #<exit
         lda     #>exit
         jsr     reset           ; Setup RESET vector
-
-        ; Switch in ROM, in case it wasn't already switched in by a RESET.
-        bit     $C082
 
         ; Call the module destructors.
         jsr     donelib
@@ -60,14 +51,8 @@ exit:   ldx     #$02
         dex
         bpl     :-
 
-        ; ProDOS TechRefMan, chapter 5.2.1:
-        ; "System programs should set the stack pointer to $FF at the
-        ;  warm-start entry point."
-        ldx     #$FF
-        txs                     ; Re-init stack pointer
-
         ; We're done
-        jmp     done
+done:   rts
 
 ; ------------------------------------------------------------------------
 
@@ -87,33 +72,11 @@ init:   ldx     #zpspace-1
         dex
         bpl     :-
 
-        ; Check for ProDOS.
-        ldy     $BF00           ; MLI call entry point
-        cpy     #$4C            ; Is MLI present? (JMP opcode)
-        bne     basic
-
-        ; Check the ProDOS system bit map.
-        lda     $BF6F           ; Protection for pages $B8 - $BF
-        cmp     #%00000001      ; Exactly system global page is protected
-        bne     basic
-
-        ; No BASIC.SYSTEM; so, quit to the ProDOS dispatcher instead.
-        lda     #<quit
-        ldx     #>quit
-        sta     done+1
-        stx     done+2
-
-        ; No BASIC.SYSTEM; so, use the addr of the ProDOS system global page.
-        lda     #<$BF00
-        ldx     #>$BF00
-        bne     :+              ; Branch always
-
-        ; Get the highest available mem addr from the BASIC interpreter.
 basic:  lda     HIMEM
         ldx     HIMEM+1
 
         ; Set up the C stack.
-:       sta     sp
+        sta     sp
         stx     sp+1
 
         ; ProDOS TechRefMan, chapter 5.3.5:
@@ -126,10 +89,6 @@ basic:  lda     HIMEM
         ; Call the module constructors.
         jsr     initlib
 
-        ; Switch in LC bank 2 for W/O.
-        bit     $C081
-        bit     $C081
-
         ; Set the source start address.
         ; Aka __LC_LOAD__ iff segment LC exists.
         lda     #<(__ONCE_LOAD__ + __ONCE_SIZE__)
@@ -139,24 +98,11 @@ basic:  lda     HIMEM
 
         ; Set the source last address.
         ; Aka __LC_LOAD__ + __LC_SIZE__ iff segment LC exists.
-        lda     #<((__ONCE_LOAD__ + __ONCE_SIZE__) + (__LC_LAST__ - __LC_START__))
-        ldy     #>((__ONCE_LOAD__ + __ONCE_SIZE__) + (__LC_LAST__ - __LC_START__))
+        lda     #<(__ONCE_LOAD__ + __ONCE_SIZE__)
+        ldy     #>(__ONCE_LOAD__ + __ONCE_SIZE__)
         sta     $96
         sty     $97
 
-        ; Set the destination last address.
-        ; Aka __LC_RUN__ + __LC_SIZE__ iff segment LC exists.
-        lda     #<__LC_LAST__
-        ldy     #>__LC_LAST__
-        sta     $94
-        sty     $95
-
-        ; Call into Applesoft Block Transfer Up -- which handles zero-
-        ; sized blocks well -- to move the content of the LC memory area.
-        jsr     $D39A           ; BLTU2
-
-        ; Switch in LC bank 2 for R/O and return.
-        bit     $C080
         rts
 
 ; ------------------------------------------------------------------------
@@ -170,28 +116,7 @@ reset:  stx     SOFTEV
         sta     PWREDUP
 return: rts
 
-        ; Quit to the ProDOS dispatcher.
-quit:   jsr     $BF00           ; MLI call entry point
-        .byte   $65             ; Quit
-        .word   q_param
-
-; ------------------------------------------------------------------------
-
-        .rodata
-
-        ; MLI parameter list for quit
-q_param:.byte   $04             ; param_count
-        .byte   $00             ; quit_type
-        .word   $0000           ; reserved
-        .byte   $00             ; reserved
-        .word   $0000           ; reserved
-
-; ------------------------------------------------------------------------
-
         .data
-
-        ; Final jump when we're done
-done:   jmp     DOSWARM         ; Potentially patched at runtime
 
 ; ------------------------------------------------------------------------
 
