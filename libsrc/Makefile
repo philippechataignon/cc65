@@ -12,9 +12,6 @@ CBMS = c128   \
        plus4  \
        vic20
 
-GEOS = geos-apple \
-       geos-cbm
-
 TARGETS = apple2       \
           apple2enh    \
           atari        \
@@ -23,8 +20,6 @@ TARGETS = apple2       \
           atari5200    \
           atmos        \
           creativision \
-          $(CBMS)      \
-          $(GEOS)      \
           gamate       \
           lynx         \
           nes          \
