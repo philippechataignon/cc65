@@ -2,39 +2,10 @@ ifneq ($(shell echo),)
   CMD_EXE = 1
 endif
 
-CBMS = c128   \
-       c16    \
-       c64    \
-       cbm510 \
-       cbm610 \
-       cx16   \
-       pet    \
-       plus4  \
-       vic20
-
-GEOS = geos-apple \
-       geos-cbm
 
 TARGETS = apple2       \
-          apple2enh    \
-          atari        \
-          atarixl      \
-          atari2600    \
-          atari5200    \
-          atmos        \
-          creativision \
-          $(CBMS)      \
-          $(GEOS)      \
-          gamate       \
-          lynx         \
-          nes          \
           none         \
-          osic1p       \
-          pce          \
-          sim6502      \
-          sim65c02     \
-          supervision  \
-          telestrat
+          sim6502      
 
 DRVTYPES = emd \
            joy \
